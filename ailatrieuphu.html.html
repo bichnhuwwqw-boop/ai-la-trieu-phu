@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AI LÀ TRIỆU PHÚ – HÓA HỌC</title>
+<style>
+  :root{--bg:#000814;--card:#001d3d;--accent:#00b4d8}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  #wrap{width:100%;max-width:920px}
+  h1{text-align:center;margin:6px 0 18px}
+  #start-screen,#game{background:var(--card);padding:20px;border-radius:12px;box-shadow:0 0 18px rgba(0,180,216,.12)}
+  input[type="text"]{width:100%;padding:10px;margin:8px 0;border-radius:6px;border:none}
+  button{padding:10px 16px;border-radius:8px;border:none;background:#eee;color:#111;cursor:pointer}
+  .answer-btn{display:block;width:100%;text-align:left;padding:12px;margin:8px 0;border-radius:8px;border:none;background:#05345a;color:#fff;font-size:16px}
+  .answer-btn:hover{filter:brightness(1.08)}
+  .correct{background:#00c853!important}
+  .wrong{background:#d50000!important}
+  #money-ladder{margin-top:14px;text-align:left}
+  .step{padding:6px}
+  .active-step{background:#ffd60a;color:#111}
+  img.question-img{display:block;margin:12px auto;max-width:80%;border-radius:8px}
+  .lifelines{margin-top:10px}
+  .lifelines button{margin-right:8px}
+  .note{font-size:13px;color:#bcd}
+</style>
+</head>
+<body>
+  <div id="wrap">
+    <h1>🎯 AI LÀ TRIỆU PHÚ – HÓA HỌC 🎯</h1>
+
+    <div id="start-screen">
+      <h3 style="text-align:center">Nhập thông tin để bắt đầu</h3>
+      <input id="playerName" type="text" placeholder="Họ và tên">
+      <input id="playerClass" type="text" placeholder="Lớp" style="margin-bottom:8px">
+      <div style="text-align:center"><button id="startBtn" type="button">BẮT ĐẦU</button></div>
+    </div>
+
+    <div id="game" style="display:none;margin-top:18px">
+      <div id="question" style="font-size:20px;margin-bottom:8px"></div>
+      <div id="imageBox" aria-hidden="true"></div>
+      <div class="answers" id="answers" role="list"></div>
+      <div class="lifelines">
+        <button id="fifty" type="button">50:50</button>
+        <button id="skip" type="button">Bỏ qua</button>
+      </div>
+      <h3 style="margin-top:14px">Thang tiền thưởng</h3>
+      <div id="money-ladder" aria-hidden="true"></div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  'use strict';
+
+  // State
+  let playerName = '', playerClass = '';
+  const money = ["200k","400k","600k","1 triệu","2 triệu","3 triệu","6 triệu","10 triệu","15 triệu","30 triệu"];
+
+  // Questions (15) - c is 0-based index for correct answer
+  const questions = [
+    { q: 'Khi thay thế nguyên tử hydrogen trong ammonia bằng gốc hydrocarbon ta thu được hợp chất nào sau đây ?', a:['Carbohydrate','Ester','Amine','Carboxylic acid'], c:2 },
+    { q: 'Phân tử amine có cấu tạo tương tự phân tử nào sau đây nhất?', a:['H2O','HF','N2','NH3'], c:3 },
+    { q: 'Mô hình cấu tạo sau đây là của chất nào ?', img: 'https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcR1SuhnpHnfUtJ0zNZ10kys2pfkmAFCi7N2U92nB_cw3UTNTHYm', a:['CH3OH','C2H5OH','CH3NH2','C6H5NH2'], c:2 },
+    { q: 'Amine nào sau đây là chất khí ở điều kiện thường ?', a:['Methylamine','Aniline','N-methylpropan-2-amine','Isobutylamine'], c:0 },
+    { q: 'Chất nào sau đây là amine no, đơn chức, mạch hở?', a:['CH3N','CH4N','CH5N','C2H5N'], c:2 },
+    { q: 'Amine nào sau đây chứa vòng benzene?', a:['Aniline','Ethylamine','Methylamine','Propylamine'], c:0 },
+    { q: 'Công thức tổng quá của amine no, mạch hở?', a:['CnH2n+3N','CnH2n+2+kNk','CnH2n+2-2a+kNk','CnH2n+1N'], c:1 },
+    { q: 'khi thay đổi mạch carbon, vị trí nhóm chức hoặc số nhóm..(1)..liên kết với nguyên tử..(2)..thu được các đồng phân amine. Nội dung phù hợp là:', a:['chức,hydrogen','chức,carbon','thế,carbon','thế,nitrogen'], c:3 },
+    { q: 'Bậc của amine là:', a:['bậc của nguyên tử carbon liên kết với nhóm chức NH2','số nguyên tử hydrogen liên kết trực tiếp với nguyên tử nitrogen','số nguyên tử hydrogen trong phân tử ammonia bị thay thế bởi gốc hydrocarbon','số gốc hydrocarbon liên kết trực tiếp với nguyên tử nitrogen'], c:2 },
+    { q: 'Trong Luminol (C8H7N3O2) không có nhóm chức nào ?', img: 'https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcSHzv2uEmroxPFUdetlOr6l8nMv3_uH3Y1eq2mrGNZSL6vHDDbT', a:['Ester','Amine','Amide','Carbonyl'], c:0 },
+    { q: 'Hợp chất nào sau đây là amine bậc hai?', a:['Diethylamine','Ethylamine','Propylamine','Methylamine'], c:0 },
+    { q: 'Hợp chất nào sau đây là amine bậc ba?', a:['Diethylamine','Trimethylamine','Propylamine','Methylamine'], c:1 },
+    { q: 'Trong phân tử chất nào sau đây có chứa nguyên tử nitrogen?', a:['Glucose','Ethyl acetate','Methylamine','Saccharose'], c:2 },
+    { q: 'Tên gốc-chức của amine CH3-CH2-NH2 là', a:['Ethylamine','N-methylethylamine','Methylethanamine','Diethylamine'], c:0 },
+    { q: 'Tên gốc-chức của amine CH3-NH-CH2-CH3 là', a:['Methylethylamine','Ethylamine','Methylethanamine','Ethylmethylamine'], c:3 }
+  ];
+
+  let index = 0;
+  let used50 = false, usedSkip = false;
+
+  // DOM refs
+  const startBtn = document.getElementById('startBtn');
+  const startScreen = document.getElementById('start-screen');
+  const gameEl = document.getElementById('game');
+  const questionEl = document.getElementById('question');
+  const imageBox = document.getElementById('imageBox');
+  const answersBox = document.getElementById('answers');
+  const moneyLadder = document.getElementById('money-ladder');
+  const fiftyBtn = document.getElementById('fifty');
+  const skipBtn = document.getElementById('skip');
+
+  // Start
+  function startGame(){
+    playerName = document.getElementById('playerName').value.trim();
+    playerClass = document.getElementById('playerClass').value.trim();
+    if(!playerName || !playerClass){ alert('Vui lòng nhập họ tên và lớp'); return; }
+    startScreen.style.display = 'none';
+    gameEl.style.display = 'block';
+    renderMoney();
+    load();
+  }
+
+  startBtn.addEventListener('click', startGame);
+
+  // lifelines
+  fiftyBtn.addEventListener('click', ()=>{
+    if(used50) return; used50 = true;
+    const q = questions[index];
+    let removed = 0;
+    for(let i=0;i<4;i++){
+      if(i !== q.c && removed < 2){
+        const btn = document.getElementById('btn'+i);
+        if(btn) btn.style.visibility = 'hidden';
+        removed++;
+      }
+    }
+  });
+
+  skipBtn.addEventListener('click', ()=>{
+    if(usedSkip) return; usedSkip = true; index++; load();
+  });
+
+  // Render current question
+  function load(){
+    try{
+      if(index >= questions.length){
+        gameEl.innerHTML = '';
+        const done = document.createElement('div');
+        const h = document.createElement('h2');
+        h.textContent = '🎉 Bạn đã hoàn thành! 🎉';
+        done.appendChild(h);
+        gameEl.appendChild(done);
+        return;
+      }
+
+      const q = questions[index];
+      questionEl.textContent = 'Câu ' + (index+1) + ': ' + q.q;
+
+      // image
+      imageBox.innerHTML = '';
+      if(q.img){
+        const img = document.createElement('img');
+        img.className = 'question-img';
+        img.src = String(q.img);
+        img.alt = 'Hình câu ' + (index+1);
+        img.onload = function(){};
+        img.onerror = function(){
+          imageBox.textContent = 'Không thể tải ảnh cho câu ' + (index+1) + '.';
+        };
+        imageBox.appendChild(img);
+      }
+
+      // answers
+      answersBox.innerHTML = '';
+      q.a.forEach(function(t,i){
+        const b = document.createElement('button');
+        b.className = 'answer-btn';
+        b.id = 'btn' + i;
+        b.type = 'button';
+        b.textContent = String.fromCharCode(65+i) + ': ' + t;
+        b.addEventListener('click', function(){ choose(i); });
+        answersBox.appendChild(b);
+      });
+
+      highlight();
+    }catch(err){
+      console.error('Load error', err);
+      // show friendly message
+      gameEl.innerHTML = '';
+      const errDiv = document.createElement('div');
+      errDiv.style.color = '#f88';
+      errDiv.textContent = 'Có lỗi xảy ra. Vui lòng tải lại trang.';
+      gameEl.appendChild(errDiv);
+    }
+  }
+
+  function choose(i){
+    const q = questions[index];
+    const btn = document.getElementById('btn'+i);
+    if(i === q.c){
+      if(btn) btn.classList.add('correct');
+      setTimeout(function(){ index++; load(); }, 700);
+    } else {
+      if(btn) btn.classList.add('wrong');
+      gameOver();
+    }
+  }
+
+  function gameOver(){
+    saveScore();
+    gameEl.innerHTML = '';
+    const h = document.createElement('h2');
+    h.textContent = '💀 TRÒ CHƠI KẾT THÚC 💀';
+    const p = document.createElement('p');
+    p.textContent = 'Bạn dừng cuộc chơi tại câu ' + (index+1);
+    gameEl.appendChild(h);
+    gameEl.appendChild(p);
+  }
+
+  function renderMoney(){
+    moneyLadder.innerHTML = '';
+    for(let i=money.length-1;i>=0;i--){
+      const div = document.createElement('div');
+      div.className = 'step';
+      div.id = 'm' + i;
+      div.textContent = (i+1) + '. ' + money[i];
+      moneyLadder.appendChild(div);
+    }
+    highlight();
+  }
+
+  function highlight(){
+    for(let i=0;i<money.length;i++){
+      const el = document.getElementById('m'+i);
+      if(el) el.classList.remove('active-step');
+    }
+    const cur = document.getElementById('m' + Math.min(index, money.length-1));
+    if(cur) cur.classList.add('active-step');
+  }
+
+  function saveScore(){
+    try{
+      const board = JSON.parse(localStorage.getItem('ml_leader') || '[]');
+      board.push({ name: playerName, class: playerClass, reached: index });
+      localStorage.setItem('ml_leader', JSON.stringify(board));
+    }catch(e){console.warn('saveScore failed', e)}
+  }
+
+})();
+</script>
+</body>
+</html>
